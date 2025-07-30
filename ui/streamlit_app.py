@@ -4,6 +4,69 @@ import json
 import time
 import re
 from typing import Dict
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    filename='app.log',
+    filemode='a',
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# --- Fetch company-specific problems (mock) ---
+def fetch_company_problems(company):
+    """
+    Mock function to fetch company-specific problems.
+    Replace this with your actual Tavily or other API call.
+    """
+    problems_db = {
+        "Amazon": [
+            {'title': 'Two Sum', 'url': 'https://leetcode.com/problems/two-sum/'},
+            {'title': 'Longest Substring Without Repeating Characters', 'url': 'https://leetcode.com/problems/longest-substring-without-repeating-characters/'},
+            {'title': 'Median of Two Sorted Arrays', 'url': 'https://leetcode.com/problems/median-of-two-sorted-arrays/'},
+            {'title': 'Merge Intervals', 'url': 'https://leetcode.com/problems/merge-intervals/'},
+            {'title': 'Valid Parentheses', 'url': 'https://leetcode.com/problems/valid-parentheses/'},
+            {'title': 'Search in Rotated Sorted Array', 'url': 'https://leetcode.com/problems/search-in-rotated-sorted-array/'},
+            {'title': 'Trapping Rain Water', 'url': 'https://leetcode.com/problems/trapping-rain-water/'},
+            {'title': 'Word Ladder', 'url': 'https://leetcode.com/problems/word-ladder/'},
+            {'title': 'Minimum Window Substring', 'url': 'https://leetcode.com/problems/minimum-window-substring/'},
+            {'title': 'LRU Cache', 'url': 'https://leetcode.com/problems/lru-cache/'},
+            {'title': 'Course Schedule', 'url': 'https://leetcode.com/problems/course-schedule/'},
+            {'title': 'Clone Graph', 'url': 'https://leetcode.com/problems/clone-graph/'},
+            {'title': 'Number of Islands', 'url': 'https://leetcode.com/problems/number-of-islands/'},
+            {'title': 'Kth Largest Element in an Array', 'url': 'https://leetcode.com/problems/kth-largest-element-in-an-array/'},
+            {'title': 'Product of Array Except Self', 'url': 'https://leetcode.com/problems/product-of-array-except-self/'},
+            {'title': 'Find Minimum in Rotated Sorted Array', 'url': 'https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/'},
+            {'title': 'Maximum Subarray', 'url': 'https://leetcode.com/problems/maximum-subarray/'},
+            {'title': 'Binary Tree Maximum Path Sum', 'url': 'https://leetcode.com/problems/binary-tree-maximum-path-sum/'},
+            {'title': 'Serialize and Deserialize Binary Tree', 'url': 'https://leetcode.com/problems/serialize-and-deserialize-binary-tree/'},
+            {'title': 'Subsets', 'url': 'https://leetcode.com/problems/subsets/'}
+        ],
+        "Wipro": [
+            {'title': 'Find Peak Element', 'url': 'https://leetcode.com/problems/find-peak-element/'},
+            {'title': 'Reverse Linked List', 'url': 'https://leetcode.com/problems/reverse-linked-list/'},
+            {'title': 'Intersection of Two Linked Lists', 'url': 'https://leetcode.com/problems/intersection-of-two-linked-lists/'},
+            {'title': 'Remove Nth Node From End of List', 'url': 'https://leetcode.com/problems/remove-nth-node-from-end-of-list/'},
+            {'title': 'Linked List Cycle', 'url': 'https://leetcode.com/problems/linked-list-cycle/'},
+            {'title': 'Binary Tree Inorder Traversal', 'url': 'https://leetcode.com/problems/binary-tree-inorder-traversal/'},
+            {'title': 'Validate Binary Search Tree', 'url': 'https://leetcode.com/problems/validate-binary-search-tree/'},
+            {'title': 'Symmetric Tree', 'url': 'https://leetcode.com/problems/symmetric-tree/'},
+            {'title': 'Maximum Depth of Binary Tree', 'url': 'https://leetcode.com/problems/maximum-depth-of-binary-tree/'},
+            {'title': 'Same Tree', 'url': 'https://leetcode.com/problems/same-tree/'},
+            {'title': 'Invert Binary Tree', 'url': 'https://leetcode.com/problems/invert-binary-tree/'},
+            {'title': 'Path Sum', 'url': 'https://leetcode.com/problems/path-sum/'},
+            {'title': 'Best Time to Buy and Sell Stock', 'url': 'https://leetcode.com/problems/best-time-to-buy-and-sell-stock/'},
+            {'title': 'Valid Anagram', 'url': 'https://leetcode.com/problems/valid-anagram/'},
+            {'title': 'Group Anagrams', 'url': 'https://leetcode.com/problems/group-anagrams/'},
+            {'title': 'Minimum Depth of Binary Tree', 'url': 'https://leetcode.com/problems/minimum-depth-of-binary-tree/'},
+            {'title': 'Balanced Binary Tree', 'url': 'https://leetcode.com/problems/balanced-binary-tree/'},
+            {'title': 'Convert Sorted Array to Binary Search Tree', 'url': 'https://leetcode.com/problems/convert-sorted-array-to-binary-search-tree/'},
+            {'title': 'Pascal’s Triangle', 'url': 'https://leetcode.com/problems/pascals-triangle/'},
+            {'title': 'Pascal’s Triangle II', 'url': 'https://leetcode.com/problems/pascals-triangle-ii/'}
+        ]
+        # Add more companies as needed
+    }
+    # Default fallback
+    return {"questions": problems_db.get(company, problems_db["Amazon"])}
 
 # Configure page
 st.set_page_config(
@@ -625,134 +688,52 @@ def get_difficulty_from_text(question_text):
         return "Medium"
 
 def render_coding_questions():
-    questions = st.session_state.quiz["questions"]
-    
-    if not questions:
-        st.warning("No coding questions generated. Please try again.")
+    import json
+    # Try to get the raw response (could be dict or string)
+    questions_data = st.session_state.quiz.get("raw_response")
+    if isinstance(questions_data, str):
+        try:
+            # Try to parse as JSON (handle single quotes if needed)
+            questions_data = json.loads(questions_data.replace("'", '"'))
+        except Exception:
+            questions_data = {}
+    elif not isinstance(questions_data, dict):
+        questions_data = {}
+
+    # Fallback to questions in session if not present
+    if not questions_data or "questions" not in questions_data:
+        questions = st.session_state.quiz.get("questions", [])
+        if not questions:
+            st.warning("No coding questions generated. Please try again.")
+            return
+        # Try to display as before if only titles/urls
+        st.markdown("## 💻 Generated Coding Problems")
+        st.markdown(f"### 📚 Tailored for {st.session_state.company} Interviews")
+        st.markdown("Click on the problem links below to practice similar problems on LeetCode and other platforms.")
+        st.write("")
+        for i, q in enumerate(questions, 1):
+            if isinstance(q, dict) and "title" in q and "url" in q:
+                st.markdown(f"🔹 **Problem {i}: [{q['title']}]({q['url']})**")
+            else:
+                st.markdown(f"🔹 Problem {i}: {q}")
+        st.markdown("---")
         return
-    
+
+    # Display from parsed JSON
     st.markdown("## 💻 Generated Coding Problems")
-    st.markdown(f"""
-    <div class="tip-box">
-        <h4 style="color: #856404; margin-bottom: 10px;">📚 Tailored for {st.session_state.company} Interviews</h4>
-        <p style="color: #856404; margin: 0;">Click on the problem links below to practice similar problems on LeetCode and other platforms.</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Limit to 15 problems as requested
-    display_questions = questions[:15]
-    
-    for i, question in enumerate(display_questions):
-        # Handle both string and dict question types
-        if isinstance(question, dict):
-            question_text = question.get('text', str(question))
-        else:
-            question_text = str(question)
-            
-        if not question_text.strip():
-            continue
-        
-        with st.expander(f"🔹 Problem {i+1}", expanded=i == 0):
-            # Display the problem in a nice format
-            st.markdown(f"""
-            <div class="coding-problem">
-                <div class="coding-problem-text">
-                    {question_text.replace(chr(10), '<br>')}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Extract concepts and find LeetCode problem
-            concepts = extract_problem_concepts(question_text)
-            leetcode_url = find_leetcode_problem(question_text)
-            difficulty = get_difficulty_from_text(question_text)
-            
-            # Display concepts as tags
-            if concepts:
-                concept_tags_html = ""
-                for concept in concepts[:4]:  # Limit to 4 concepts
-                    concept_tags_html += f'<span class="concept-tag">🎯 {concept}</span>'
-                
-                st.markdown(f"""
-                <div class="concept-tags">
-                    {concept_tags_html}
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Display difficulty
-            difficulty_class = f"difficulty-{difficulty.lower()}"
-            st.markdown(f"""
-            <div class="difficulty-badge {difficulty_class}">
-                💡 Difficulty: {difficulty}
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # LeetCode links section
-            st.markdown("""
-            <div class="leetcode-links">
-                <h4>🔗 Practice Similar Problems:</h4>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.markdown(f'<a href="{leetcode_url}" target="_blank" class="problem-link">🎯 LeetCode Problem</a>', unsafe_allow_html=True)
-            
-            with col2:
-                # Alternative problems based on concepts
-                if concepts:
-                    concept_name = concepts[0].lower().replace(' ', '-')
-                    if concept_name == "binary-tree":
-                        concept_url = "https://leetcode.com/tag/tree/"
-                    elif concept_name == "binary-search":
-                        concept_url = "https://leetcode.com/tag/binary-search/"
-                    elif concept_name == "dynamic-programming":
-                        concept_url = "https://leetcode.com/tag/dynamic-programming/"
-                    elif concept_name == "linked-list":
-                        concept_url = "https://leetcode.com/tag/linked-list/"
-                    elif concept_name == "hash-table":
-                        concept_url = "https://leetcode.com/tag/hash-table/"
-                    elif concept_name == "two-pointers":
-                        concept_url = "https://leetcode.com/tag/two-pointers/"
-                    elif concept_name == "sliding-window":
-                        concept_url = "https://leetcode.com/tag/sliding-window/"
-                    else:
-                        concept_url = f"https://leetcode.com/tag/{concept_name}/"
-                    
-                    st.markdown(f'<a href="{concept_url}" target="_blank" class="problem-link">📚 More {concepts[0]} Problems</a>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<a href="https://leetcode.com/problemset/algorithms/" target="_blank" class="problem-link">📚 Algorithm Problems</a>', unsafe_allow_html=True)
-            
-            with col3:
-                # GeeksforGeeks link
-                if concepts:
-                    concept_name = concepts[0].lower().replace(' ', '-')
-                    if concept_name == "binary-tree":
-                        geeks_url = "https://www.geeksforgeeks.org/binary-tree-data-structure/"
-                    elif concept_name == "binary-search":
-                        geeks_url = "https://www.geeksforgeeks.org/binary-search/"
-                    elif concept_name == "dynamic-programming":
-                        geeks_url = "https://www.geeksforgeeks.org/dynamic-programming/"
-                    elif concept_name == "linked-list":
-                        geeks_url = "https://www.geeksforgeeks.org/data-structures/linked-list/"
-                    elif concept_name == "hash-table":
-                        geeks_url = "https://www.geeksforgeeks.org/hashing-data-structure/"
-                    elif concept_name == "graph":
-                        geeks_url = "https://www.geeksforgeeks.org/graph-data-structure-and-algorithms/"
-                    elif concept_name == "sorting":
-                        geeks_url = "https://www.geeksforgeeks.org/sorting-algorithms/"
-                    else:
-                        geeks_url = f"https://www.geeksforgeeks.org/{concept_name}/"
-                    
-                    st.markdown(f'<a href="{geeks_url}" target="_blank" class="problem-link">📖 GeeksforGeeks Guide</a>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<a href="https://www.geeksforgeeks.org/data-structures/" target="_blank" class="problem-link">📖 Data Structures</a>', unsafe_allow_html=True)
+    st.markdown(f"### 📚 Tailored for {st.session_state.company} Interviews")
+    st.markdown("Click on the problem links below to practice similar problems on LeetCode and other platforms.")
+    st.write("")
+    for i, q in enumerate(questions_data["questions"], 1):
+        st.markdown(f"🔹 **Problem {i}: [{q['title']}]({q['url']})**")
+    st.markdown("---")
 
 def handle_generate_questions():
-    """Generate questions based on user selection in Streamlit UI"""
-    # Initialize the question generator
-    controller = QuestionController(company=st.session_state.company)
+    logging.info(f"handle_generate_questions called: company={st.session_state.company}, category={st.session_state.category}, experience={st.session_state.experience}")
+    # Persist controller in session state
+    if 'controller' not in st.session_state or st.session_state.controller.company != st.session_state.company:
+        st.session_state.controller = QuestionController(company=st.session_state.company)
+    controller = st.session_state.controller
     
     # Determine category from UI selection
     category = "VQAR" if st.session_state.category.startswith("VQAR") else "Coding"
@@ -789,6 +770,8 @@ def handle_generate_questions():
                 category=category
             )
             
+            logging.info(f"Questions generated result: status={result.get('status', 'unknown')}, num_questions={len(result.get('questions', [])) if isinstance(result, dict) and 'questions' in result else 'N/A'}")
+            
             # Handle API key errors specifically
             if isinstance(result, str) and ("API key" in result or "provide" in result):
                 st.error(result)
@@ -804,6 +787,7 @@ def handle_generate_questions():
                 _process_coding_questions(result)
                 
         except Exception as e:
+            logging.error(f"Error generating questions: {str(e)}")
             st.error(f"❌ Error generating questions: {str(e)}")
             if st.session_state.get('debug_mode', False):
                 with st.expander("🐛 Error Details"):
@@ -818,7 +802,10 @@ def _process_vqar_questions(result):
         else:
             questions = parse_quiz_response(result)
         
+        logging.info(f"Processed VQAR questions: valid={len(questions)}")
+        
         if not questions:
+            logging.warning("No VQAR questions parsed.")
             st.error("❌ Could not parse questions. Please try again.")
             if st.session_state.debug_mode:
                 with st.expander("Debug Raw Response"):
@@ -835,7 +822,10 @@ def _process_vqar_questions(result):
                 'answer' in q and q['answer'] in q['options']):
                 valid_questions.append(q)
         
+        logging.info(f"Processed VQAR questions: valid={len(valid_questions)}")
+        
         if not valid_questions:
+            logging.warning("No valid VQAR questions generated.")
             st.error("❌ No valid questions generated. Please try again.")
             return
         
@@ -858,6 +848,7 @@ def _process_vqar_questions(result):
         st.rerun()
         
     except Exception as e:
+        logging.error(f"Failed to process VQAR questions: {str(e)}")
         st.error(f"Failed to process VQAR questions: {str(e)}")
         if st.session_state.debug_mode:
             st.exception(e)
@@ -885,7 +876,10 @@ def _process_coding_questions(result: str):
                 any(keyword in q.lower() for keyword in ["problem", "description", "input", "output"])):
                 valid_questions.append(q)
         
+        logging.info(f"Processed coding questions: valid={len(valid_questions)}")
+        
         if not valid_questions:
+            logging.warning("No valid coding questions generated.")
             st.error("❌ No valid coding questions generated. Please try again.")
             if st.session_state.debug_mode:
                 with st.expander("Debug Raw Response"):
@@ -910,6 +904,7 @@ def _process_coding_questions(result: str):
         st.rerun()
         
     except Exception as e:
+        logging.error(f"Failed to process coding questions: {str(e)}")
         st.error(f"Failed to process coding questions: {str(e)}")
         if st.session_state.debug_mode:
             st.exception(e)
@@ -983,6 +978,7 @@ with st.sidebar:
             st.session_state.quiz["current"] = 0
             st.session_state.quiz["score"] = 0
             st.session_state.quiz["done"] = False
+        st.session_state.generate_questions_clicked = False  # Reset flag on category change
     
     st.session_state.category = current_category
     
@@ -1003,18 +999,23 @@ with st.sidebar:
     st.markdown("---")
     
     if st.button("🚀 Generate Questions", use_container_width=True, type="primary"):
+        st.session_state.generate_questions_clicked = True
+
+    if st.session_state.get("generate_questions_clicked", False) and not st.session_state.quiz["generated"]:
         handle_generate_questions()
+        st.session_state.generate_questions_clicked = False  # Reset after generation
     
     if st.session_state.quiz["generated"]:
         st.markdown("---")
         if st.button("🔄 Reset", use_container_width=True):
             init_session_state()
+            st.session_state.generate_questions_clicked = False  # Reset flag on reset
             st.rerun()
 
 # Main content area
 st.title(f"🎯 AI Placement Preparation - {st.session_state.company}")
 
-# Show appropriate content based on category and generation status
+# Show content based on current category only - completely separate rendering
 if not st.session_state.quiz["generated"]:
     st.markdown("### Welcome to AI Placement Agent! 👋")
     st.markdown("This advanced tool helps you prepare for placement interviews with personalized questions and direct problem links.")
@@ -1050,7 +1051,16 @@ if not st.session_state.quiz["generated"]:
     st.markdown("👈 **Configure your preferences in the sidebar to get started!**")
 
 else:
-    # Show content based on current category only - completely separate rendering
+    # --- Dynamic Company-Specific Problems Section ---
+    company = st.session_state.company
+    problems_data = fetch_company_problems(company)
+    st.markdown(f"## 📚 Tailored for {company} Interviews")
+    st.markdown("Click on the problem links below to practice similar problems on LeetCode and other platforms.")
+    st.write("")
+    for i, q in enumerate(problems_data["questions"], 1):
+        st.markdown(f"🔹 **Problem {i}: [{q['title']}]({q['url']})**")
+    st.markdown("---")
+    # Show appropriate content based on category and generation status
     if "VQAR" in st.session_state.category:
         render_aptitude_quiz()
     else:

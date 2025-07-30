@@ -23,13 +23,13 @@ class QuestionController:
     """
     
     def __init__(self, company=None):
-       """Initialize with default fallback questions and configuration"""
-       print(f"Initializing QuestionController with company: {company}")
-       self.company = company
-       self.fallback_vqar = self._create_fallback_vqar_questions()
-       self.fallback_coding = self._create_fallback_coding_questions(company or "default")
-       self.min_vqar_questions = 5
-       self.min_coding_length = 200
+        """Initialize with default fallback questions and configuration"""
+        # print(f"Initializing QuestionController with company: {company}")
+        self.company = company
+        self.fallback_vqar = self._create_fallback_vqar_questions()
+        self.fallback_coding = self._create_fallback_coding_questions(company or "default")
+        self.min_vqar_questions = 5
+        self.min_coding_length = 200
         
         
     def generate_questions(self, 
@@ -141,28 +141,24 @@ class QuestionController:
         """Generate and validate coding questions"""
         try:
             questions = generate_coding(company, experience)
-            
-            if not questions or len(questions.strip()) < self.min_coding_length:
+            # If error returned as a dict
+            if isinstance(questions, list) and questions and 'error' in questions[0]:
+                return {
+                    'status': 'error',
+                    'message': questions[0]['error']
+                }
+            if not questions or len(questions) < 5:
                 return {
                     'status': 'error',
                     'message': 'Insufficient coding questions generated'
                 }
-                
-            # Parse and validate problems
-            parsed = self._parse_coding_questions(questions)
-            if not parsed:
-                return {
-                    'status': 'error',
-                    'message': 'No valid coding problems found'
-                }
-                
+            # No need to parse further, pass as is
             return {
                 'status': 'success',
                 'message': '',
-                'questions': parsed,
+                'questions': questions,
                 'source': 'api'
             }
-            
         except Exception as e:
             return {
                 'status': 'error',
