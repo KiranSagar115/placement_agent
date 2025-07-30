@@ -286,6 +286,8 @@ class QuestionController:
         ]
         return json.dumps(questions)
 
+        
+
     @staticmethod
     def _create_fallback_coding_questions(company: str) -> str:
         """Default coding questions with company context"""
